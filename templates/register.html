@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Page</title>
+    <link rel="stylesheet" href="../static/dist/css/bootstrap.css">
+    <script src="../static/dist/js/bootstrap.js"></script>
+</head>
+<body>
+    <h1 class="text-center text-primary">Welcome to the Registration Page</h1>
+    <!-- fullname, email, password, phone, role -->
+    <div class="row">
+        <div class="col-md-4"></div>
+    <div class="col-md-4 card shadow p-2">
+         <form action="/register" method="post">
+            <h4 class="text-success text-center">{{message}}</h4>
+
+            <label>Full Name</label> <br>
+            <input 
+            type="text" 
+            name="fullname" 
+            placeholder="Enter your full name"
+            required
+            class="form-control"> <br>
+
+            <label>Email address</label> <br>
+            <input 
+            type="email" 
+            name="email" 
+            placeholder="Enter email address" 
+            required
+            class="form-control"> <br>
+
+            <label>Phone Number</label><br>
+            <input 
+            type="text"
+            name="phone"
+            placeholder="Enter phone number"
+            required
+            class="form-control"> <br>
+
+            <label>Password</label><br>
+            <input 
+            type="password" 
+            name="password" 
+            placeholder="Enter password" 
+            required
+            class="form-control"> <br><br>
+
+            <input type="submit" value="Register" class="btn btn-success text-center">
+     </form>
+    </div>
+    <div class="col-md-4"></div>
+    </div>
+</body>
+</html>
