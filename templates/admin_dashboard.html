@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="../static/dist/css/bootstrap.min.css">
+    <script src="../static/dist/js/bootstrap.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-danger text-center bg-dark p-4">Welcome to the Admin Dashboard
+            <span></span>
+        </h1>
+        <h2><p class="text-secondary text-center">Hello, {{ name }}</p></h2>
+        <!-- {{users}} -->
+
+        <table class="table table-bordered table-striped mt-4">
+            <head>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Phone Number</th>
+                <th>Role</th>
+                <th>Update</th>
+            </head>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user[1] }}</td>
+                    <td>{{ user[2] }}</td>
+                    <td>{{ user[3] }}</td>
+                    <td>{{ user[4] }}</td>
+                    <td><a href="#" class="btn btn-sm btn-primary">Edit</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table><br><hr>
+        <a href="/logout" class="btn btn-dark">Logout</a>
+        
+    </div>
+</body>
+</html>
