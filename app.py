@@ -92,6 +92,7 @@ def login():
         else:
             return render_template("login.html", message = "Email not found")
         
+# student dashboard    
 @app.route("/student/dashboard")
 def student_dashboard():
     if session.get("role") == "student":
@@ -140,7 +141,7 @@ def teacher_dashboard():
 
     assignments = cursor.fetchall()
 
-    return render_template("teacher_dashboard.html", name=session.get("user_name"), assignment = assignments)
+    return render_template("teacher_dashboard.html", name=session.get("user_name"), assignments = assignments)
     
 
 # admin dashboard
