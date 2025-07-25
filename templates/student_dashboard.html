@@ -9,10 +9,38 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="text-primary text-center bg-warning p-4">Welcome to the Students Dashboard
-            <span></span>
+        <h1 class="text-info text-center bg-secondary p-4">Welcome to the Students Dashboard
+            
         </h1>
         <h2><p class="text-warning text-center">Hello, {{ name }}</p></h2>
+
+        <div class="container mt-5">
+            <h3 class="text-center text-info">Assignments</h3>
+            {% if assignments %}
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Description</th>
+                            <th>Due Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for assignment in assignments %}
+                        <tr>
+                            <td>{{ assignment[0] }}</td>
+                            <td>{{ assignment[1] }}</td>
+                            <td>{{ assignment[2] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="text-center">No assignments posted yet.</p>
+            {% endif %}
+        </div>
+
+
           <a href="/logout" class="btn btn-primary">Logout</a>
     </div>
 </body>
