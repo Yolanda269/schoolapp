@@ -1,12 +1,14 @@
 from flask import *
 import pymysql
 import functions
-
+from datetime import datetime
 
 # create a new app based on flask
 app = Flask(__name__)
 
 # below is the register route
+
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "GET":
@@ -18,31 +20,36 @@ def register():
         password = request.form["password"]
         role = "student"
 
-        # establish connection to db
         connection = pymysql.connect(host="localhost", user="root", password="", database="school_db")
-
-        # create a cursor that enables executing sql
         cursor = connection.cursor()
 
-        # structure the sql query for insert
-        sql = "INSERT INTO users(fullname, email, phone, password, role) values(%s, %s, %s, %s, %s)"
-
-        # put the data into a tuple
+        # Insert user
+        sql = "INSERT INTO users(fullname, email, phone, password, role) VALUES (%s, %s, %s, %s, %s)"
         data = (fullname, email, phone, functions.hash_password_salt(password), role)
-
-        # execute
         cursor.execute(sql, data)
-
-        # commit changes to db
         connection.commit()
 
-        message = "User registered successfully"
+        # Log registration
+        try:
+            timestamp = datetime.now()
+            performed_by = session.get("user_name", "Anonymous")  # Could be 'admin' or self-registration
+            action = f"Registered new user: {fullname} ({email}) as a {role}"
+            log_sql = "INSERT INTO logs (timestamp, performed_by, action) VALUES (%s, %s, %s)"
+            cursor.execute(log_sql, (timestamp, performed_by, action))
+            connection.commit()
+        except Exception as e:
+            print("Failed to log action:", e)
 
-        # if successful, render message back
+        cursor.close()
+        connection.close()
+
+        message = "User registered successfully"
         return render_template("register.html", message=message)
+
     
 app.secret_key = "gfyr6458692nwvcud8292enfu4funmwimdof02n10cnf58"
 
+# login
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
@@ -51,21 +58,10 @@ def login():
         email = request.form["email"]
         password = request.form["password"]
 
-        # create connection
         connection = pymysql.connect(host="localhost", user="root", password="", database="school_db")
-
-        # create a cursor that enables executing sql
         cursor = connection.cursor()
 
-        # structure query for login
-        sql = "select * from users where email=%s"
-
-        data = (email,)
-
-        # execute
-        cursor.execute(sql, data)
-
-        # if the details are correct, put them into a usrs variable
+        cursor.execute("select * from users where email=%s", (email,))
         user = cursor.fetchone()
 
         if user:
@@ -73,25 +69,29 @@ def login():
             role = user[5]
             fullname = user[1]
 
-            # verify
             if functions.verify_password_salt(db_password, password):
                 session["user_name"] = fullname
                 session["role"] = role
                 session["user_id"] = user[0]
                 session["user_email"] = email
 
-                # based on role redirect a person to a given dashoard
+                
+                log_sql = "INSERT INTO logs (user_id, action, timestamp) VALUES (%s, %s, NOW())"
+                cursor.execute(log_sql, (user[0], f"{role.capitalize()} '{fullname}' logged in"))
+                connection.commit()
+
+                
                 if role == "admin":
                     return redirect(url_for("admin_dashboard"))
                 elif role == "teacher":
                     return redirect(url_for("teacher_dashboard"))
                 else:
                     return redirect(url_for("student_dashboard"))
-            else: 
-                return render_template("login.html", message = "Incorrect password")
+            else:
+                return render_template("login.html", message="Incorrect password")
         else:
-            return render_template("login.html", message = "Email not found")
-        
+            return render_template("login.html", message="Email not found")
+
 # student dashboard    
 @app.route("/student/dashboard")
 def student_dashboard():
@@ -101,6 +101,13 @@ def student_dashboard():
         )
         cursor = connection.cursor()
 
+        # Log the dashboard view
+        log_message = f"Student '{session.get('user_name')}' viewed the student dashboard"
+        cursor.execute("""
+            INSERT INTO logs (user_id, action)
+            VALUES (%s, %s)
+        """, (session.get("user_id"), log_message))
+
         # Get all upcoming assignments, ordered by due date
         cursor.execute("""
             SELECT title, description, due_date, posted_at, attachment_url
@@ -109,6 +116,7 @@ def student_dashboard():
         """)
         assignments = cursor.fetchall()
 
+        connection.commit()
         cursor.close()
         connection.close()
 
@@ -120,57 +128,131 @@ def student_dashboard():
     return redirect(url_for("login"))
 
 
+
 # teacher dashboard
 @app.route("/teacher/dashboard")
 def teacher_dashboard():
     if session.get("role") != "teacher":
         return redirect(url_for("login"))
-    connection = pymysql.connect(host="localhost", user="root", password="", database="school_db")
 
+    connection = pymysql.connect(host="localhost", user="root", password="", database="school_db")
     cursor = connection.cursor()
 
-    cursor.execute("select user_id from users where email=%s", (session.get("user_email")))
+    cursor.execute("SELECT user_id FROM users WHERE email=%s", (session.get("user_email"),))
     teacher = cursor.fetchone()
 
     if not teacher:
         return "Teacher not found"
-    
+
     teacher_id = teacher[0]
 
-    cursor.execute("select title, description, due_date, posted_at from assignments where teacher_id=%s order by posted_at DESC", (teacher_id,))
+    # ✅ Insert a log entry for viewing dashboard
+    cursor.execute("""
+        INSERT INTO logs (user_id, action, timestamp)
+        VALUES (%s, %s, NOW())
+    """, (teacher_id, "Accessed Teacher Dashboard"))
+    connection.commit()
 
+    cursor.execute("""
+        SELECT title, description, due_date, posted_at 
+        FROM assignments 
+        WHERE teacher_id=%s 
+        ORDER BY posted_at DESC
+    """, (teacher_id,))
     assignments = cursor.fetchall()
 
-    return render_template("teacher_dashboard.html", name=session.get("user_name"), assignments = assignments)
-    
+    cursor.close()
+    connection.close()
+
+    return render_template("teacher_dashboard.html", name=session.get("user_name"), assignments=assignments)
 
 # admin dashboard
 @app.route("/admin/dashboard")
 def admin_dashboard():
     if session.get("role") == "admin":
-        # create connection
-        connection = pymysql.connect(host="localhost", user="root", password="", database="school_db")
-
-        cursor = connection.cursor()
-        cursor.execute("select user_id, fullname, email, phone, role from users")
-
-        users = cursor.fetchall()
-
-        return render_template("admin_dashboard.html", name = session.get("user_name"), users = users)
-    return redirect(url_for("login"))  
-
-# editing
-@app.route("/admin/user/<int:user_id>/edit", methods=["GET"])
-def edit_user(user_id):
-    if session.get("role") == "admin":
-        # establish a connection to the db
-        connection = pymysql.connect(host="localhost", user="root", password="", database="school_db")
-
-        cursor = connection.cursor()
-        cursor.execute("select user_id, fullname, email, phone, role from users where user_id = %s", (user_id, ))
-        user = cursor.fetchone()
-        return render_template("edit_user.html", user = user)
+        return render_template("admin_dashboard.html", name=session.get("user_name"))
     return redirect(url_for("login"))
+  
+# editing
+@app.route("/admin/user/<int:user_id>/edit", methods=["GET", "POST"])
+def edit_user(user_id):
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+
+    connection = pymysql.connect(host="localhost", user="root", password="", database="school_db")
+    cursor = connection.cursor()
+
+    if request.method == "POST":
+        fullname = request.form["fullname"]
+        email = request.form["email"]
+        phone = request.form["phone"]
+        role = request.form["role"]
+
+        # Update the user info
+        cursor.execute("""
+            UPDATE users
+            SET fullname = %s, email = %s, phone = %s, role = %s
+            WHERE user_id = %s
+        """, (fullname, email, phone, role, user_id))
+
+        connection.commit()
+
+        # Log the edit action
+        admin_id = session.get("user_id")
+        action = f"Edited user with ID {user_id}"
+        cursor.execute("INSERT INTO logs (action, user_id) VALUES (%s, %s)", (action, admin_id))
+        connection.commit()
+
+        flash("User updated successfully!", "success")
+        cursor.close()
+        connection.close()
+        return redirect(url_for("admin_dashboard"))
+
+    # For GET request
+    cursor.execute("SELECT user_id, fullname, email, phone, role FROM users WHERE user_id = %s", (user_id,))
+    user = cursor.fetchone()
+    cursor.close()
+    connection.close()
+    
+    return render_template("edit_user.html", user=user)
+
+
+# view users
+@app.route("/admin/users")
+def admin_users():
+    if session.get("role") == "admin":
+        connection = pymysql.connect(host="localhost", user="root", password="", database="school_db")
+        cursor = connection.cursor()
+        cursor.execute("SELECT user_id, fullname, email, phone, role FROM users")
+        users = cursor.fetchall()
+        connection.close()
+        return render_template("view_users.html", users=users, name=session.get("user_name"))
+    return redirect(url_for("login"))
+
+# view logs
+@app.route("/admin/logs")
+def view_logs():
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+
+    connection = pymysql.connect(host="localhost", user="root", password="", database="school_db")
+    cursor = connection.cursor()
+
+    # Join logs and users to get full log details
+    cursor.execute("""
+        SELECT logs.timestamp, users.fullname, users.email, logs.action
+        FROM logs
+        JOIN users ON logs.user_id = users.user_id
+        ORDER BY logs.timestamp DESC
+    """)
+    logs = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+    return render_template("view_logs.html", logs=logs)
+
+
 
 # update
 @app.route("/admin/user/<int:user_id>/update", methods=["POST"])
@@ -191,7 +273,7 @@ def update_user(user_id):
 
         connection.commit()
 
-        return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_users"))
     return redirect(url_for("login"))
 
 # assignment
@@ -205,30 +287,45 @@ def create_assignment():
         description = request.form["description"]
         due_date = request.form["due_date"]
 
-        # Get teacher ID from session (assuming you store user_id after login)
         teacher_email = session.get("user_email")
 
-        # Connect to DB to fetch teacher ID
         connection = pymysql.connect(host="localhost", user="root", password="", database="school_db")
         cursor = connection.cursor()
+
         cursor.execute("SELECT user_id FROM users WHERE email=%s", (teacher_email,))
         teacher = cursor.fetchone()
 
         if teacher:
             teacher_id = teacher[0]
 
-            sql = "INSERT INTO assignments (title, description, due_date, teacher_id) VALUES (%s, %s, %s, %s)"
+            # Insert assignment
+            sql = """
+                INSERT INTO assignments (title, description, due_date, teacher_id)
+                VALUES (%s, %s, %s, %s)
+            """
             cursor.execute(sql, (title, description, due_date, teacher_id))
             connection.commit()
+
+            
+            log_action = f"Posted new assignment: {title}"
+            cursor.execute("INSERT INTO logs (user_id, action, timestamp) VALUES (%s, %s, NOW())", (teacher_id, log_action))
+            connection.commit()
+
+            cursor.close()
+            connection.close()
             return redirect(url_for("teacher_dashboard"))
         else:
             return "Teacher not found"
 
     return render_template("create_assignment.html")
 
+
 # delete
 @app.route("/admin/user/<int:user_id>/delete", methods=["GET", "POST"])
 def delete_user(user_id):
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+
     connection = pymysql.connect(host="localhost", user="root", password="", database="school_db")
     cursor = connection.cursor()
 
@@ -238,7 +335,15 @@ def delete_user(user_id):
     if request.method == "POST":
         if user:
             user_name = user[0]
+            
+            # Delete the user
             cursor.execute("DELETE FROM users WHERE user_id = %s", (user_id,))
+            
+            # Log the deletion
+            action = f"Deleted user {user_name}"
+            admin_id = session.get("user_id")  # Make sure this is set at login!
+            cursor.execute("INSERT INTO logs (action, user_id) VALUES (%s, %s)", (action, admin_id))
+            
             connection.commit()
             flash(f"User '{user_name}' has been deleted.", "success")
         else:
@@ -259,8 +364,23 @@ def delete_user(user_id):
 
 @app.route("/logout")
 def logout():
+    user_id = session.get("user_id")
+    user_name = session.get("user_name")
+    role = session.get("role")
+
+    # Only log if user is logged in
+    if user_id and user_name and role:
+        connection = pymysql.connect(host="localhost", user="root", password="", database="school_db")
+        cursor = connection.cursor()
+        log_sql = "INSERT INTO logs (user_id, action, timestamp) VALUES (%s, %s, NOW())"
+        cursor.execute(log_sql, (user_id, f"{role.capitalize()} '{user_name}' logged out"))
+        connection.commit()
+        cursor.close()
+        connection.close()
+
     session.clear()
     return redirect(url_for("login"))
+
 
 
 # run the app
