@@ -146,7 +146,6 @@ def teacher_dashboard():
 
     teacher_id = teacher[0]
 
-    # ✅ Insert a log entry for viewing dashboard
     cursor.execute("""
         INSERT INTO logs (user_id, action, timestamp)
         VALUES (%s, %s, NOW())
@@ -228,6 +227,24 @@ def admin_users():
         connection.close()
         return render_template("view_users.html", users=users, name=session.get("user_name"))
     return redirect(url_for("login"))
+
+# admin recheck
+@app.route("/admin/confirm", methods=["GET", "POST"])
+def confirm_admin_password():
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        entered_password = request.form["password"]
+
+        if entered_password == "admin1234":
+            session["admin_confirmed"] = True
+            return redirect(url_for("view_logs"))  
+        else:
+            return render_template("confirm_admin.html", error="Incorrect password")
+
+    return render_template("confirm_admin.html")
+
 
 # view logs
 @app.route("/admin/logs")

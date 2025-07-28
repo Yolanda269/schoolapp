@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Confirm Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h3 class="text-center text-danger">Admin Confirmation</h3>
+        {% if error %}
+            <div class="alert alert-danger text-center">{{ error }}</div>
+        {% endif %}
+        <form method="post" class="shadow p-4 col-md-6 offset-md-3 bg-light">
+            <div class="mb-3">
+                <label for="password" class="form-label"><strong>Enter Admin Password:</strong></label>
+                <input type="password" name="password" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Confirm</button>
+        </form>
+    </div>
+</body>
+</html>
