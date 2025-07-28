@@ -1,0 +1,41 @@
+<!-- templates/base.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}My App{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css">
+</head>
+<body>
+    {% block content %}{% endblock %}
+
+    <script>
+    let logoutTimer;
+    const idleTime = 30 * 1000; // 30 seconds
+    let lastActivity = Date.now();
+
+    function resetTimer() {
+        lastActivity = Date.now();
+        clearTimeout(logoutTimer);
+        logoutTimer = setTimeout(() => {
+            const now = Date.now();
+            if ((now - lastActivity) >= idleTime) {
+                const currentUrl = window.location.pathname;
+                if (!['/login', '/logout', '/register'].includes(currentUrl)) {
+                    window.location.href = "/logout";
+                }
+            } else {
+                resetTimer(); // Restart if activity was detected during timeout
+            }
+        }, idleTime);
+    }
+
+    ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(event => {
+        document.addEventListener(event, resetTimer);
+    });
+
+    resetTimer();
+</script>
+
+</body>
+</html>

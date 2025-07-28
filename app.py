@@ -1,14 +1,77 @@
 from flask import *
 import pymysql
 import functions
-from datetime import datetime
+from datetime import datetime, timedelta
+import re
 
 # create a new app based on flask
 app = Flask(__name__)
 
+@app.before_request
+def check_inactivity():
+    # Skip timeout check for these routes
+    if request.endpoint in ["login", "register", "logout"]:
+        return
+
+    # If the user is logged in
+    if "user_id" in session:
+        now = datetime.now()
+        last_active = session.get("last_active")
+
+        if last_active:
+            try:
+                last_active_time = datetime.strptime(last_active, "%Y-%m-%d %H:%M:%S.%f")
+                if now - last_active_time > timedelta(seconds=30):
+                    session.clear()
+                    flash("Session expired due to inactivity.", "warning")
+                    return redirect(url_for("login"))
+            except Exception as e:
+                # If parsing fails, treat it as expired
+                session.clear()
+                flash("Session expired (timing error).", "warning")
+                return redirect(url_for("login"))
+
+        # Update last active time
+        session["last_active"] = str(now)
+
+
+# password checker
+def check_password_strength(password):
+    # Minimum length check
+    if len(password) < 8:
+        return "Must be eight characters"
+
+    elif not re.search("[a-z]", password):
+        return "Must have at least one small letter"
+
+    elif not re.search("[A-Z]", password):
+        return "Must have at least one capital letter"
+
+    elif not re.search("[0-9]", password):
+        return "Must have at least one number"
+
+    elif not re.search("[_@#$]", password):
+        return "Must have at least one symbol"
+
+    else:
+        common_patterns = [
+            r'(?i)password',
+            r'(?i)123456',
+            r'(?i)qwerty',
+            r'(?i)admin',
+            r'(?i)root',
+            # Add more common patterns as needed
+        ]
+        
+        for pattern in common_patterns:
+            if re.search(pattern, password):
+                return "Password too Simple"
+        
+        # If all criteria are met, return "Password correct"
+        return "Password Correct - Strong Password"
+
+
 # below is the register route
-
-
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "GET":
@@ -237,7 +300,7 @@ def confirm_admin_password():
     if request.method == "POST":
         entered_password = request.form["password"]
 
-        if entered_password == "admin1234":
+        if entered_password == "admin5678":
             session["admin_confirmed"] = True
             return redirect(url_for("view_logs"))  
         else:

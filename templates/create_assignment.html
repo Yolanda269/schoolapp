@@ -9,7 +9,7 @@
 </head>
 <body>
     <div class="container">
-      <h2>Post New Assignment</h2>
+      <h2 class="text-center text-info bg-secondary p-4 display-5"><strong>Post New Assignment</strong></h2>
       <form method="POST">
         <div class="mb-3">
           <label class="form-label">Title</label>
@@ -35,9 +35,10 @@
         </div>
         <button type="submit" class="btn btn-primary">Post Assignment</button>
         <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-secondary"
-          >Back</a
-        >
+          >Back</a>
       </form>
     </div>
+    {% extends "base.html" %}
+
 </body>
 </html>
