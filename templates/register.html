@@ -6,6 +6,43 @@
     <title>Registration Page</title>
     <link rel="stylesheet" href="../static/dist/css/bootstrap.css">
     <script src="../static/dist/js/bootstrap.js"></script>
+    <script>
+        function checkPasswordStrength(password) {
+            if (password.length < 8) {
+                return "Must be eight characters";
+            } else if (!/[a-z]/.test(password)) {
+                return "Must have at least one small letter";
+            } else if (!/[A-Z]/.test(password)) {
+                return "Must have at least one capital letter";
+            } else if (!/[0-9]/.test(password)) {
+                return "Must have at least one number";
+            } else if (!/[_@#$]/.test(password)) {
+                return "Must have at least one symbol";
+            } else if (/password|123456|qwerty|admin|root/i.test(password)) {
+                return "Password too Simple";
+            } else {
+                return "Password Correct - Strong Password";
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const passwordInput = document.getElementById("password");
+            const feedback = document.getElementById("password-feedback");
+
+            passwordInput.addEventListener("blur", function () {
+                const result = checkPasswordStrength(passwordInput.value);
+                feedback.innerText = result;
+
+                if (result.includes("Correct")) {
+                    feedback.style.color = "green";
+                } else {
+                    feedback.style.color = "red";
+                }
+            });
+        });
+    </script>
+
+
 </head>
 <body>
     <h1 class="text-center text-primary">Welcome to the Registration Page</h1>
@@ -13,6 +50,12 @@
     <div class="row">
         <div class="col-md-4"></div>
     <div class="col-md-4 card shadow p-2">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-warning">{{ messages[0] }}</div>
+            {% endif %}
+        {% endwith %}
+
          <form action="/register" method="post">
             <h4 class="text-success text-center">{{message}}</h4>
 
@@ -45,6 +88,7 @@
             type="password" 
             name="password" 
             placeholder="Enter password" 
+            id="password"
             required
             class="form-control"> <br><br>
 

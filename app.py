@@ -34,46 +34,17 @@ def check_inactivity():
         # Update last active time
         session["last_active"] = str(now)
 
-
-# password checker
-def check_password_strength(password):
-    # Minimum length check
-    if len(password) < 8:
-        return "Must be eight characters"
-
-    elif not re.search("[a-z]", password):
-        return "Must have at least one small letter"
-
-    elif not re.search("[A-Z]", password):
-        return "Must have at least one capital letter"
-
-    elif not re.search("[0-9]", password):
-        return "Must have at least one number"
-
-    elif not re.search("[_@#$]", password):
-        return "Must have at least one symbol"
-
-    else:
-        common_patterns = [
-            r'(?i)password',
-            r'(?i)123456',
-            r'(?i)qwerty',
-            r'(?i)admin',
-            r'(?i)root',
-            # Add more common patterns as needed
-        ]
-        
-        for pattern in common_patterns:
-            if re.search(pattern, password):
-                return "Password too Simple"
-        
-        # If all criteria are met, return "Password correct"
-        return "Password Correct - Strong Password"
-
-
 # below is the register route
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    if request.method == "POST":
+        password = request.form["password"]
+        strength_feedback = functions.check_password_strength(password)
+
+        if strength_feedback != "Password Correct - Strong Password":
+            flash(strength_feedback)
+            return render_template("register.html")
+
     if request.method == "GET":
         return render_template("register.html")
     else:
@@ -190,8 +161,6 @@ def student_dashboard():
         )
     return redirect(url_for("login"))
 
-
-
 # teacher dashboard
 @app.route("/teacher/dashboard")
 def teacher_dashboard():
@@ -278,7 +247,6 @@ def edit_user(user_id):
     
     return render_template("edit_user.html", user=user)
 
-
 # view users
 @app.route("/admin/users")
 def admin_users():
@@ -308,7 +276,6 @@ def confirm_admin_password():
 
     return render_template("confirm_admin.html")
 
-
 # view logs
 @app.route("/admin/logs")
 def view_logs():
@@ -331,8 +298,6 @@ def view_logs():
     connection.close()
 
     return render_template("view_logs.html", logs=logs)
-
-
 
 # update
 @app.route("/admin/user/<int:user_id>/update", methods=["POST"])
@@ -399,7 +364,6 @@ def create_assignment():
 
     return render_template("create_assignment.html")
 
-
 # delete
 @app.route("/admin/user/<int:user_id>/delete", methods=["GET", "POST"])
 def delete_user(user_id):
@@ -437,11 +401,7 @@ def delete_user(user_id):
     connection.close()
     return render_template("delete_user.html", user=user)
 
-
-
-
-
-
+# logout
 @app.route("/logout")
 def logout():
     user_id = session.get("user_id")
